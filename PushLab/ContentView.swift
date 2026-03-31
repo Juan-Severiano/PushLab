@@ -9,51 +9,112 @@ import SwiftUI
 import SwiftData
 
 struct ContentView: View {
-    @Environment(\.modelContext) private var modelContext
-    @Query private var items: [Item]
-
+    @State private var selectedTab = 0
+    
     var body: some View {
-        NavigationSplitView {
-            List {
-                ForEach(items) { item in
-                    NavigationLink {
-                        Text("Item at \(item.timestamp, format: Date.FormatStyle(date: .numeric, time: .standard))")
-                    } label: {
-                        Text(item.timestamp, format: Date.FormatStyle(date: .numeric, time: .standard))
-                    }
-                }
-                .onDelete(perform: deleteItems)
+        VStack(spacing: 0) {
+            // Header
+            HStack {
+                Image(systemName: "paperplane.circle.fill")
+                    .font(.system(size: 24))
+                    .foregroundStyle(.blue)
+                
+                Text("PushLab")
+                    .font(.system(size: 18, weight: .semibold))
+                
+                Spacer()
             }
-            .navigationSplitViewColumnWidth(min: 180, ideal: 200)
-            .toolbar {
-                ToolbarItem {
-                    Button(action: addItem) {
-                        Label("Add Item", systemImage: "plus")
-                    }
-                }
+            .padding()
+            .background(Color(nsColor: .windowBackgroundColor))
+            
+            Divider()
+            
+            // Tab selector
+            HStack(spacing: 0) {
+                TabButton(
+                    title: "Expo",
+                    icon: "1.circle.fill",
+                    isSelected: selectedTab == 0,
+                    action: { selectedTab = 0 }
+                )
+                .keyboardShortcut("1", modifiers: .command)
+                
+                TabButton(
+                    title: "Live Activity",
+                    icon: "2.circle.fill",
+                    isSelected: selectedTab == 1,
+                    action: { selectedTab = 1 }
+                )
+                .keyboardShortcut("2", modifiers: .command)
+                
+                TabButton(
+                    title: "APNs",
+                    icon: "3.circle.fill",
+                    isSelected: selectedTab == 2,
+                    action: { selectedTab = 2 }
+                )
+                .keyboardShortcut("3", modifiers: .command)
+                
+                TabButton(
+                    title: "FCM",
+                    icon: "4.circle.fill",
+                    isSelected: selectedTab == 3,
+                    action: { selectedTab = 3 }
+                )
+                .keyboardShortcut("4", modifiers: .command)
             }
-        } detail: {
-            Text("Select an item")
+            .padding(.horizontal)
+            .padding(.vertical, 8)
+            .background(Color(nsColor: .controlBackgroundColor))
+            
+            Divider()
+            
+            // Content
+            TabView(selection: $selectedTab) {
+                ExpoView()
+                    .tag(0)
+                
+                LiveActivityView()
+                    .tag(1)
+                
+                APNsView()
+                    .tag(2)
+                
+                FCMView()
+                    .tag(3)
+            }
+            .tabViewStyle(.automatic)
         }
+        .frame(minWidth: 500, minHeight: 700)
     }
+}
 
-    private func addItem() {
-        withAnimation {
-            let newItem = Item(timestamp: Date())
-            modelContext.insert(newItem)
-        }
-    }
-
-    private func deleteItems(offsets: IndexSet) {
-        withAnimation {
-            for index in offsets {
-                modelContext.delete(items[index])
+struct TabButton: View {
+    let title: String
+    let icon: String
+    let isSelected: Bool
+    let action: () -> Void
+    
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 6) {
+                Image(systemName: icon)
+                    .font(.system(size: 13))
+                Text(title)
+                    .font(.system(size: 13, weight: isSelected ? .semibold : .regular))
             }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 8)
+            .padding(.horizontal, 12)
+            .background(isSelected ? Color.accentColor.opacity(0.15) : Color.clear)
+            .foregroundStyle(isSelected ? .primary : .secondary)
+            .cornerRadius(6)
         }
+        .buttonStyle(.plain)
     }
 }
 
 #Preview {
     ContentView()
-        .modelContainer(for: Item.self, inMemory: true)
+        .modelContainer(for: SavedToken.self, inMemory: true)
 }

@@ -12,7 +12,7 @@ import SwiftData
 struct PushLabApp: App {
     var sharedModelContainer: ModelContainer = {
         let schema = Schema([
-            Item.self,
+            SavedToken.self,
         ])
         let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
 
@@ -28,5 +28,17 @@ struct PushLabApp: App {
             ContentView()
         }
         .modelContainer(sharedModelContainer)
+        .defaultSize(width: 600, height: 800)
+        .commands {
+            CommandGroup(replacing: .appInfo) {
+                Button("About PushLab") {
+                    // Show about window
+                }
+            }
+        }
+        
+        Settings {
+            SettingsView()
+        }
     }
 }
