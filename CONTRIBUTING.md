@@ -1,6 +1,6 @@
 # Contributing to PushLab
 
-Obrigado pelo interesse em contribuir com o PushLab! 🎉
+Obrigado pelo interesse em contribuir com o PushLab!
 
 ## Como Contribuir
 

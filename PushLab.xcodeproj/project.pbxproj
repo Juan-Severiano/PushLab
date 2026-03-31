@@ -6,14 +6,30 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		617920712F7C3D8B00F37D82 /* README.md in Resources */ = {isa = PBXBuildFile; fileRef = 617920702F7C3D8B00F37D82 /* README.md */; };
+		6179207F2F7C3E2700F37D82 /* LICENSE in Resources */ = {isa = PBXBuildFile; fileRef = 6179207E2F7C3E2700F37D82 /* LICENSE */; };
+		617920812F7C3E3B00F37D82 /* .gitignore in Resources */ = {isa = PBXBuildFile; fileRef = 617920802F7C3E3B00F37D82 /* .gitignore */; };
+		617920832F7C3E5D00F37D82 /* CONTRIBUTING.md in Resources */ = {isa = PBXBuildFile; fileRef = 617920822F7C3E5D00F37D82 /* CONTRIBUTING.md */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXFileReference section */
 		617920422F7C3AB600F37D82 /* PushLab.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PushLab.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		617920702F7C3D8B00F37D82 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		6179207E2F7C3E2700F37D82 /* LICENSE */ = {isa = PBXFileReference; lastKnownFileType = text; path = LICENSE; sourceTree = "<group>"; };
+		617920802F7C3E3B00F37D82 /* .gitignore */ = {isa = PBXFileReference; lastKnownFileType = text; path = .gitignore; sourceTree = "<group>"; };
+		617920822F7C3E5D00F37D82 /* CONTRIBUTING.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = CONTRIBUTING.md; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		617920442F7C3AB600F37D82 /* PushLab */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = PushLab;
+			sourceTree = "<group>";
+		};
+		617920842F7C426400F37D82 /* Docs */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = Docs;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -32,6 +48,11 @@
 		617920392F7C3AB600F37D82 = {
 			isa = PBXGroup;
 			children = (
+				617920842F7C426400F37D82 /* Docs */,
+				617920802F7C3E3B00F37D82 /* .gitignore */,
+				617920822F7C3E5D00F37D82 /* CONTRIBUTING.md */,
+				6179207E2F7C3E2700F37D82 /* LICENSE */,
+				617920702F7C3D8B00F37D82 /* README.md */,
 				617920442F7C3AB600F37D82 /* PushLab */,
 				617920432F7C3AB600F37D82 /* Products */,
 			);
@@ -62,6 +83,7 @@
 			);
 			fileSystemSynchronizedGroups = (
 				617920442F7C3AB600F37D82 /* PushLab */,
+				617920842F7C426400F37D82 /* Docs */,
 			);
 			name = PushLab;
 			packageProductDependencies = (
@@ -109,6 +131,10 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				6179207F2F7C3E2700F37D82 /* LICENSE in Resources */,
+				617920812F7C3E3B00F37D82 /* .gitignore in Resources */,
+				617920712F7C3D8B00F37D82 /* README.md in Resources */,
+				617920832F7C3E5D00F37D82 /* CONTRIBUTING.md in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
