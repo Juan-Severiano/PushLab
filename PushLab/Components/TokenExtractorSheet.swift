@@ -7,7 +7,7 @@
 
 import SwiftUI
 
-/// Sheet for extracting push tokens from iOS simulators
+/// Sheet for extracting push tokens from iOS simulator app data
 struct TokenExtractorSheet: View {
     @State private var viewModel = TokenExtractorViewModel()
     
@@ -35,9 +35,9 @@ struct TokenExtractorSheet: View {
                         appSection
                     }
                     
-                    // Monitoring Controls
-                    if viewModel.selectedSimulator?.isBooted == true {
-                        monitoringSection
+                    // Extract Button
+                    if viewModel.selectedApp != nil {
+                        extractSection
                     }
                     
                     // Captured Tokens
@@ -58,12 +58,9 @@ struct TokenExtractorSheet: View {
             // Footer
             footerView
         }
-        .frame(width: 500, height: 600)
+        .frame(width: 500, height: 550)
         .task {
             await viewModel.loadSimulators()
-        }
-        .onDisappear {
-            viewModel.stopMonitoring()
         }
     }
     
@@ -71,14 +68,14 @@ struct TokenExtractorSheet: View {
     
     private var headerView: some View {
         HStack {
-            Image(systemName: "antenna.radiowaves.left.and.right")
+            Image(systemName: "folder.badge.gearshape")
                 .font(.title2)
                 .foregroundStyle(.blue)
             
             VStack(alignment: .leading, spacing: 2) {
                 Text("Token Extractor")
                     .font(.headline)
-                Text("Extract push tokens from iOS Simulator")
+                Text("Extract push tokens from app data files")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -163,7 +160,7 @@ struct TokenExtractorSheet: View {
                     .font(.caption)
             } else {
                 Picker("App", selection: $viewModel.selectedApp) {
-                    Text("All apps").tag(nil as InstalledApp?)
+                    Text("Select an app").tag(nil as InstalledApp?)
                     ForEach(viewModel.apps) { app in
                         Text("\(app.name) (\(app.bundleId))")
                             .tag(app as InstalledApp?)
@@ -177,55 +174,34 @@ struct TokenExtractorSheet: View {
         .clipShape(RoundedRectangle(cornerRadius: 8))
     }
     
-    // MARK: - Monitoring Section
+    // MARK: - Extract Section
     
-    private var monitoringSection: some View {
+    private var extractSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Label("Step 3: Monitor Logs", systemImage: "waveform")
+            Label("Step 3: Extract Tokens", systemImage: "doc.text.magnifyingglass")
                 .font(.subheadline.weight(.semibold))
             
-            // Token type toggles
-            HStack(spacing: 16) {
-                Toggle("APNs", isOn: $viewModel.monitorAPNs)
-                Toggle("FCM", isOn: $viewModel.monitorFCM)
-            }
-            .disabled(viewModel.isMonitoring)
+            Text("Search for push tokens stored in the app's data files (UserDefaults, Firebase, etc.)")
+                .font(.caption)
+                .foregroundStyle(.secondary)
             
             HStack {
-                // Status indicator
-                HStack(spacing: 6) {
-                    Circle()
-                        .fill(viewModel.isMonitoring ? Color.red : Color.gray)
-                        .frame(width: 8, height: 8)
-                    Text(viewModel.isMonitoring ? "Monitoring..." : "Idle")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-                
                 Spacer()
                 
-                // Control buttons
-                if viewModel.isMonitoring {
-                    Button("Stop") {
-                        viewModel.stopMonitoring()
+                Button {
+                    Task { await viewModel.extractTokens() }
+                } label: {
+                    if viewModel.isExtracting {
+                        ProgressView()
+                            .scaleEffect(0.8)
+                            .frame(width: 120)
+                    } else {
+                        Label("Extract Tokens", systemImage: "magnifyingglass")
+                            .frame(width: 120)
                     }
-                    .buttonStyle(.borderedProminent)
-                    .tint(.red)
-                } else {
-                    Button("Start Monitoring") {
-                        viewModel.startMonitoring()
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .disabled(!viewModel.canStartMonitoring || (!viewModel.monitorAPNs && !viewModel.monitorFCM))
                 }
-            }
-            
-            // Instructions
-            if viewModel.isMonitoring {
-                Text("💡 Now open your app in the simulator and trigger a push token registration")
-                    .font(.caption)
-                    .foregroundStyle(.blue)
-                    .padding(.top, 4)
+                .buttonStyle(.borderedProminent)
+                .disabled(!viewModel.canExtract)
             }
         }
         .padding()
@@ -238,7 +214,7 @@ struct TokenExtractorSheet: View {
     private var tokensSection: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
-                Label("Captured Tokens (\(viewModel.capturedTokens.count))", systemImage: "key.fill")
+                Label("Found Tokens (\(viewModel.capturedTokens.count))", systemImage: "key.fill")
                     .font(.subheadline.weight(.semibold))
                 
                 Spacer()
@@ -309,15 +285,8 @@ struct TokenCaptureRow: View {
             
             // Token info
             VStack(alignment: .leading, spacing: 2) {
-                HStack {
-                    Text(token.type.rawValue)
-                        .font(.caption.weight(.semibold))
-                    Text("•")
-                        .foregroundStyle(.secondary)
-                    Text(token.source)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
+                Text(token.type.rawValue)
+                    .font(.caption.weight(.semibold))
                 
                 Text(token.truncatedValue)
                     .font(.system(.caption, design: .monospaced))

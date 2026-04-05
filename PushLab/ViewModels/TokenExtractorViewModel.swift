@@ -21,6 +21,7 @@ final class TokenExtractorViewModel {
             if selectedSimulator != oldValue {
                 apps = []
                 selectedApp = nil
+                capturedTokens = []
                 if selectedSimulator != nil {
                     Task { await loadApps() }
                 }
@@ -43,25 +44,16 @@ final class TokenExtractorViewModel {
     /// Whether apps are being loaded
     var isLoadingApps = false
     
-    /// Whether log monitoring is active
-    var isMonitoring = false
-    
-    /// Monitor APNs tokens
-    var monitorAPNs = true
-    
-    /// Monitor FCM tokens
-    var monitorFCM = true
+    /// Whether tokens are being extracted
+    var isExtracting = false
     
     /// Current error message
     var errorMessage: String?
     
-    /// Log output for debugging
-    var logOutput: [String] = []
-    
     // MARK: - Services
     
     private let simulatorService = SimulatorService.shared
-    private let logStreamService = LogStreamService.shared
+    private let tokenFileService = TokenFileService.shared
     
     // MARK: - Computed Properties
     
@@ -70,20 +62,14 @@ final class TokenExtractorViewModel {
         simulators.filter { $0.isBooted }
     }
     
-    /// Whether we can start monitoring
-    var canStartMonitoring: Bool {
-        selectedSimulator?.isBooted == true && !isMonitoring
+    /// Whether we can extract tokens
+    var canExtract: Bool {
+        selectedSimulator?.isBooted == true && selectedApp != nil && !isExtracting
     }
     
     /// Whether we have any simulators available
     var hasBootedSimulators: Bool {
         !bootedSimulators.isEmpty
-    }
-    
-    // MARK: - Initialization
-    
-    init() {
-        setupLogStreamCallbacks()
     }
     
     // MARK: - Public Methods
@@ -126,31 +112,35 @@ final class TokenExtractorViewModel {
         isLoadingApps = false
     }
     
-    /// Starts monitoring logs for tokens
-    func startMonitoring() {
-        guard let simulator = selectedSimulator, simulator.isBooted else {
-            errorMessage = "Please select a booted simulator"
+    /// Extracts tokens from the selected app's data files
+    @MainActor
+    func extractTokens() async {
+        guard let simulator = selectedSimulator,
+              let app = selectedApp else {
+            errorMessage = "Please select a simulator and app"
             return
         }
         
-        capturedTokens = []
-        logOutput = []
+        isExtracting = true
         errorMessage = nil
+        capturedTokens = []
         
-        logStreamService.startMonitoring(
-            deviceId: simulator.id,
-            bundleId: selectedApp?.bundleId,
-            monitorAPNs: monitorAPNs,
-            monitorFCM: monitorFCM
-        )
+        do {
+            let tokens = try await tokenFileService.extractTokens(
+                deviceId: simulator.id,
+                bundleId: app.bundleId
+            )
+            
+            if tokens.isEmpty {
+                errorMessage = "No tokens found in app data. The app may not have registered for push notifications yet."
+            } else {
+                capturedTokens = tokens
+            }
+        } catch {
+            errorMessage = "Failed to extract tokens: \(error.localizedDescription)"
+        }
         
-        isMonitoring = true
-    }
-    
-    /// Stops monitoring logs
-    func stopMonitoring() {
-        logStreamService.stopMonitoring()
-        isMonitoring = false
+        isExtracting = false
     }
     
     /// Clears captured tokens
@@ -158,36 +148,8 @@ final class TokenExtractorViewModel {
         capturedTokens = []
     }
     
-    /// Clears log output
-    func clearLogs() {
-        logOutput = []
-    }
-    
     /// Removes a specific token from the list
     func removeToken(_ token: CapturedToken) {
         capturedTokens.removeAll { $0.id == token.id }
-    }
-    
-    // MARK: - Private Methods
-    
-    private func setupLogStreamCallbacks() {
-        logStreamService.onTokenCaptured = { [weak self] token in
-            guard let self = self else { return }
-            
-            // Avoid duplicates
-            if !self.capturedTokens.contains(where: { $0.value == token.value }) {
-                self.capturedTokens.insert(token, at: 0)
-            }
-        }
-        
-        logStreamService.onLogLine = { [weak self] line in
-            guard let self = self else { return }
-            
-            // Keep only last 100 lines
-            if self.logOutput.count > 100 {
-                self.logOutput.removeFirst()
-            }
-            self.logOutput.append(line)
-        }
     }
 }
