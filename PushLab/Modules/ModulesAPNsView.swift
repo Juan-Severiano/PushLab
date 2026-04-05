@@ -66,19 +66,43 @@ struct APNsView: View {
                     }
                     
                     HStack {
-                        Text(viewModel.p8Key.isEmpty ? "No .p8 key loaded" : ".p8 key loaded")
-                            .font(.system(size: 11))
-                            .foregroundStyle(
-                                viewModel.p8Key.isEmpty ? .secondary : .primary
-                            )
-                        
-                        Spacer()
+                        if viewModel.hasKeyLoaded {
+                            VStack(alignment: .leading, spacing: 4) {
+                                HStack(spacing: 6) {
+                                    Image(systemName: "checkmark.circle.fill")
+                                        .foregroundStyle(.green)
+                                        .font(.system(size: 12))
+                                    Text(viewModel.p8FileName)
+                                        .font(.system(size: 11, design: .monospaced))
+                                }
+                                
+                                Text("Key loaded successfully")
+                                    .font(.system(size: 10))
+                                    .foregroundStyle(.secondary)
+                            }
+                            
+                            Spacer()
+                            
+                            Button(action: viewModel.clearP8Key) {
+                                Image(systemName: "xmark.circle")
+                                    .foregroundStyle(.secondary)
+                            }
+                            .buttonStyle(.plain)
+                            .help("Clear key")
+                        } else {
+                            Text("No .p8 key loaded")
+                                .font(.system(size: 11))
+                                .foregroundStyle(.secondary)
+                            
+                            Spacer()
+                        }
                         
                         Button("Load .p8 Key") {
                             let panel = NSOpenPanel()
                             panel.allowedContentTypes = [.item]
                             panel.allowsMultipleSelection = false
                             panel.canChooseDirectories = false
+                            panel.message = "Select APNs authentication key (.p8 file)"
                             
                             if panel.runModal() == .OK, let url = panel.url {
                                 viewModel.loadP8Key(from: url)
@@ -86,6 +110,9 @@ struct APNsView: View {
                         }
                         .buttonStyle(.bordered)
                     }
+                    .padding(10)
+                    .background(Color(nsColor: .controlBackgroundColor))
+                    .cornerRadius(8)
                 }
                 
                 // Environment

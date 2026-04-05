@@ -13,6 +13,12 @@ class FCMViewModel {
     var registrationToken: String = ""
     var serverKey: String = ""
     
+    // Service Account / Credentials file
+    var projectId: String = ""
+    var serviceAccountEmail: String = ""
+    var privateKey: String = ""
+    var credentialsFileName: String = ""
+    
     var title: String = ""
     var body: String = ""
     
@@ -33,6 +39,49 @@ class FCMViewModel {
         let id = UUID()
         var key: String
         var value: String
+    }
+    
+    /// Loads Firebase credentials from a service account JSON file
+    func loadServiceAccount(from url: URL) {
+        do {
+            let data = try Data(contentsOf: url)
+            
+            guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+                errorMessage = "Invalid JSON format"
+                return
+            }
+            
+            // Firebase Admin SDK service account format
+            if let projId = json["project_id"] as? String {
+                projectId = projId
+            }
+            
+            if let clientEmail = json["client_email"] as? String {
+                serviceAccountEmail = clientEmail
+            }
+            
+            if let privKey = json["private_key"] as? String {
+                privateKey = privKey
+            }
+            
+            credentialsFileName = url.lastPathComponent
+            errorMessage = nil
+            
+        } catch {
+            errorMessage = "Failed to load file: \(error.localizedDescription)"
+        }
+    }
+    
+    /// Clears loaded credentials
+    func clearCredentials() {
+        projectId = ""
+        serviceAccountEmail = ""
+        privateKey = ""
+        credentialsFileName = ""
+    }
+    
+    var hasCredentialsLoaded: Bool {
+        !projectId.isEmpty && !privateKey.isEmpty
     }
     
     func addDataPair() {

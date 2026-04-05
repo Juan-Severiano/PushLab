@@ -15,6 +15,7 @@ class APNsViewModel {
     var teamId: String = ""
     var keyId: String = ""
     var p8Key: String = ""
+    var p8FileName: String = ""
     
     var title: String = ""
     var subtitle: String = ""
@@ -30,6 +31,10 @@ class APNsViewModel {
     var responseStatus: String = ""
     var showResponse: Bool = false
     var errorMessage: String?
+    
+    var hasKeyLoaded: Bool {
+        !p8Key.isEmpty
+    }
     
     func send() async {
         isLoading = true
@@ -89,9 +94,16 @@ class APNsViewModel {
         do {
             let key = try String(contentsOf: url, encoding: .utf8)
             p8Key = key
+            p8FileName = url.lastPathComponent
+            errorMessage = nil
         } catch {
             errorMessage = "Failed to load .p8 file: \(error.localizedDescription)"
         }
+    }
+    
+    func clearP8Key() {
+        p8Key = ""
+        p8FileName = ""
     }
     
     func generateCURL() -> String {

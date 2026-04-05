@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+internal import UniformTypeIdentifiers
 
 struct FCMView: View {
     @State private var viewModel = FCMViewModel()
@@ -55,12 +56,67 @@ struct FCMView: View {
                         )
                 }
                 
-                // Server key
+                // Firebase Service Account
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("Server Key / OAuth Token")
+                    Text("Firebase Credentials")
                         .font(.system(size: 13, weight: .medium))
                     
-                    TextField("", text: $viewModel.serverKey)
+                    HStack {
+                        if viewModel.hasCredentialsLoaded {
+                            VStack(alignment: .leading, spacing: 4) {
+                                HStack(spacing: 6) {
+                                    Image(systemName: "checkmark.circle.fill")
+                                        .foregroundStyle(.green)
+                                        .font(.system(size: 12))
+                                    Text(viewModel.credentialsFileName)
+                                        .font(.system(size: 11, design: .monospaced))
+                                }
+                                
+                                Text("Project: \(viewModel.projectId)")
+                                    .font(.system(size: 10))
+                                    .foregroundStyle(.secondary)
+                            }
+                            
+                            Spacer()
+                            
+                            Button(action: viewModel.clearCredentials) {
+                                Image(systemName: "xmark.circle")
+                                    .foregroundStyle(.secondary)
+                            }
+                            .buttonStyle(.plain)
+                            .help("Clear credentials")
+                        } else {
+                            Text("No credentials loaded")
+                                .font(.system(size: 11))
+                                .foregroundStyle(.secondary)
+                            
+                            Spacer()
+                        }
+                        
+                        Button("Load Service Account") {
+                            let panel = NSOpenPanel()
+                            panel.allowedContentTypes = [UTType.json]
+                            panel.allowsMultipleSelection = false
+                            panel.canChooseDirectories = false
+                            panel.message = "Select Firebase service account JSON file"
+                            
+                            if panel.runModal() == .OK, let url = panel.url {
+                                viewModel.loadServiceAccount(from: url)
+                            }
+                        }
+                        .buttonStyle(.bordered)
+                    }
+                    .padding(10)
+                    .background(Color(nsColor: .controlBackgroundColor))
+                    .cornerRadius(8)
+                }
+                
+                // Server key (legacy) or OAuth Token
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Server Key / OAuth Token (Optional)")
+                        .font(.system(size: 13, weight: .medium))
+                    
+                    TextField("Enter manually if not using service account", text: $viewModel.serverKey)
                         .textFieldStyle(.roundedBorder)
                         .font(.system(size: 11, design: .monospaced))
                 }
