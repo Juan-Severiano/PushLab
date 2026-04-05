@@ -60,10 +60,35 @@ final class SimulatorService {
     
     /// Lists all apps installed in a simulator
     func listApps(deviceId: String) async throws -> [InstalledApp] {
-        let output = try await executeCommand("xcrun simctl listapps \(deviceId)")
+        // Get plist output and convert to JSON using plutil
+        let output = try await executeCommand("xcrun simctl listapps \(deviceId) | plutil -convert json -o - -")
         
-        // Parse the plist-like output
-        return parseAppList(output)
+        guard let data = output.data(using: .utf8),
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String: [String: Any]] else {
+            return []
+        }
+        
+        var apps: [InstalledApp] = []
+        
+        for (bundleId, appInfo) in json {
+            // Skip Apple system apps
+            guard !bundleId.hasPrefix("com.apple.") else { continue }
+            
+            // Get app name from CFBundleDisplayName or CFBundleName
+            let displayName = appInfo["CFBundleDisplayName"] as? String
+            let bundleName = appInfo["CFBundleName"] as? String
+            let name = displayName ?? bundleName ?? bundleId
+            
+            // Get data container path
+            let dataContainer = appInfo["DataContainer"] as? String
+            let path = dataContainer?.replacingOccurrences(of: "file://", with: "")
+            
+            let app = InstalledApp(bundleId: bundleId, name: name, path: path)
+            apps.append(app)
+        }
+        
+        // Sort by name
+        return apps.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
     }
     
     /// Gets the data container path for an app
@@ -128,84 +153,6 @@ final class SimulatorService {
         }
         
         return last
-    }
-    
-    /// Parses the output of `xcrun simctl listapps` into InstalledApp objects
-    private func parseAppList(_ output: String) -> [InstalledApp] {
-        var apps: [InstalledApp] = []
-        
-        // The output is a plist-style dictionary
-        // We'll parse it line by line looking for bundle IDs and display names
-        var currentBundleId: String?
-        var currentName: String?
-        var currentPath: String?
-        
-        let lines = output.components(separatedBy: .newlines)
-        
-        for line in lines {
-            let trimmed = line.trimmingCharacters(in: .whitespaces)
-            
-            // Detect start of a new app entry (bundle ID as key)
-            if trimmed.hasPrefix("\"") && trimmed.hasSuffix("\" = {") {
-                // Save previous app if exists
-                if let bundleId = currentBundleId {
-                    let name = currentName ?? bundleId
-                    apps.append(InstalledApp(bundleId: bundleId, name: name, path: currentPath))
-                }
-                
-                // Extract new bundle ID
-                let start = trimmed.index(after: trimmed.startIndex)
-                let substring = trimmed[start...]
-                if let end = substring.firstIndex(of: "\"") {
-                    currentBundleId = String(trimmed[start..<end])
-                }
-                currentName = nil
-                currentPath = nil
-            }
-            
-            // Look for CFBundleDisplayName or CFBundleName
-            if trimmed.contains("CFBundleDisplayName") || trimmed.contains("CFBundleName") {
-                if let value = extractPlistValue(from: trimmed) {
-                    currentName = value
-                }
-            }
-            
-            // Look for Path
-            if trimmed.contains("Path = ") {
-                if let value = extractPlistValue(from: trimmed) {
-                    currentPath = value
-                }
-            }
-        }
-        
-        // Don't forget the last app
-        if let bundleId = currentBundleId {
-            let name = currentName ?? bundleId
-            apps.append(InstalledApp(bundleId: bundleId, name: name, path: currentPath))
-        }
-        
-        // Filter out Apple system apps and sort by name
-        return apps
-            .filter { !$0.bundleId.hasPrefix("com.apple.") }
-            .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
-    }
-    
-    /// Extracts the value from a plist-style line like: CFBundleName = "MyApp";
-    private func extractPlistValue(from line: String) -> String? {
-        guard let equalsIndex = line.firstIndex(of: "=") else { return nil }
-        
-        let valueStart = line.index(after: equalsIndex)
-        var value = String(line[valueStart...]).trimmingCharacters(in: .whitespaces)
-        
-        // Remove trailing semicolon
-        if value.hasSuffix(";") {
-            value = String(value.dropLast())
-        }
-        
-        // Remove quotes
-        value = value.trimmingCharacters(in: CharacterSet(charactersIn: "\""))
-        
-        return value.isEmpty ? nil : value
     }
 }
 
