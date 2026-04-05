@@ -10,6 +10,7 @@ import SwiftUI
 struct FCMView: View {
     @State private var viewModel = FCMViewModel()
     @State private var showCURLModal = false
+    @State private var showTokenExtractor = false
     
     var body: some View {
         ScrollView {
@@ -26,6 +27,14 @@ struct FCMView: View {
                             .font(.system(size: 13, weight: .medium))
                         
                         Spacer()
+                        
+                        Button {
+                            showTokenExtractor = true
+                        } label: {
+                            Image(systemName: "antenna.radiowaves.left.and.right")
+                        }
+                        .buttonStyle(.plain)
+                        .help("Extract token from simulator")
                         
                         SaveTokenView(
                             token: $viewModel.registrationToken,
@@ -220,6 +229,11 @@ struct FCMView: View {
                 curlCommand: viewModel.generateCURL(),
                 isPresented: $showCURLModal
             )
+        }
+        .sheet(isPresented: $showTokenExtractor) {
+            TokenExtractorSheet { token in
+                viewModel.registrationToken = token
+            }
         }
     }
 }

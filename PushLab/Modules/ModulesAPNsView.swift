@@ -12,6 +12,7 @@ struct APNsView: View {
     @State private var viewModel = APNsViewModel()
     @State private var showCURLModal = false
     @State private var showFilePicker = false
+    @State private var showTokenExtractor = false
     
     var body: some View {
         ScrollView {
@@ -28,6 +29,14 @@ struct APNsView: View {
                             .font(.system(size: 13, weight: .medium))
                         
                         Spacer()
+                        
+                        Button {
+                            showTokenExtractor = true
+                        } label: {
+                            Image(systemName: "antenna.radiowaves.left.and.right")
+                        }
+                        .buttonStyle(.plain)
+                        .help("Extract token from simulator")
                         
                         SaveTokenView(
                             token: $viewModel.deviceToken,
@@ -190,6 +199,11 @@ struct APNsView: View {
                 curlCommand: viewModel.generateCURL(),
                 isPresented: $showCURLModal
             )
+        }
+        .sheet(isPresented: $showTokenExtractor) {
+            TokenExtractorSheet { token in
+                viewModel.deviceToken = token
+            }
         }
     }
 }
