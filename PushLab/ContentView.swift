@@ -69,7 +69,6 @@ struct ContentView: View {
             
             Divider()
             
-            // Content
             TabView(selection: $selectedTab) {
                 ExpoView()
                     .tag(0)
