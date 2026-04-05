@@ -62,6 +62,7 @@ final class TokenFileService {
             "\(containerPath)/Library/Preferences",
             "\(containerPath)/Library/Application Support",
             "\(containerPath)/Library/Application Support/Google",
+            "\(containerPath)/Library/Application Support/Google/FirebaseMessaging",
             "\(containerPath)/Documents"
         ]
         
@@ -69,6 +70,10 @@ final class TokenFileService {
             let foundTokens = searchForTokens(in: searchPath, bundleId: bundleId)
             tokens.append(contentsOf: foundTokens)
         }
+        
+        // Also check Firebase-specific storage files
+        let firebaseTokens = extractFirebaseTokens(containerPath: containerPath, bundleId: bundleId)
+        tokens.append(contentsOf: firebaseTokens)
         
         // Remove duplicates
         var seen = Set<String>()
@@ -81,6 +86,59 @@ final class TokenFileService {
         }
         
         return tokens
+    }
+    
+    /// Extracts FCM tokens from Firebase-specific storage locations
+    private func extractFirebaseTokens(containerPath: String, bundleId: String) -> [CapturedToken] {
+        var tokens: [CapturedToken] = []
+        let fm = FileManager.default
+        
+        // Firebase stores FCM token in a checkin file or installations plist
+        let firebasePaths = [
+            "\(containerPath)/Library/Application Support/Google/FirebaseMessaging/FIRMessagingStore.plist",
+            "\(containerPath)/Library/Preferences/\(bundleId).plist",
+            "\(containerPath)/Library/Application Support/FirebaseInstallations.plist"
+        ]
+        
+        for path in firebasePaths {
+            guard fm.fileExists(atPath: path),
+                  let data = fm.contents(atPath: path),
+                  let plist = try? PropertyListSerialization.propertyList(from: data, format: nil) as? [String: Any] else {
+                continue
+            }
+            
+            // Look for FCM token keys used by Firebase SDK
+            let fcmKeys = ["fcm_token", "token", "FCMToken", "default_token", "messaging_token"]
+            
+            for key in fcmKeys {
+                if let tokenValue = findValueForKey(key, in: plist) {
+                    if let stringToken = tokenValue as? String, looksLikeToken(stringToken) {
+                        tokens.append(CapturedToken(type: .fcm, value: stringToken, source: bundleId))
+                    } else if let dataToken = tokenValue as? Data,
+                              let stringToken = String(data: dataToken, encoding: .utf8),
+                              looksLikeToken(stringToken) {
+                        tokens.append(CapturedToken(type: .fcm, value: stringToken, source: bundleId))
+                    }
+                }
+            }
+        }
+        
+        return tokens
+    }
+    
+    /// Recursively finds a value for a key in nested dictionaries
+    private func findValueForKey(_ targetKey: String, in dict: [String: Any]) -> Any? {
+        for (key, value) in dict {
+            if key.localizedCaseInsensitiveContains(targetKey) {
+                return value
+            }
+            if let nestedDict = value as? [String: Any] {
+                if let found = findValueForKey(targetKey, in: nestedDict) {
+                    return found
+                }
+            }
+        }
+        return nil
     }
     
     /// Lists all apps that might have push tokens stored
@@ -171,6 +229,7 @@ final class TokenFileService {
             // Check if key matches known token keys
             let isTokenKey = knownTokenKeys.contains { key.localizedCaseInsensitiveContains($0) }
             
+            // Handle String values
             if let stringValue = value as? String {
                 if isTokenKey {
                     // Determine token type based on key and value
@@ -185,12 +244,39 @@ final class TokenFileService {
                     let token = CapturedToken(type: tokenType, value: stringValue, source: bundleId)
                     tokens.append(token)
                 }
-            } else if let nestedDict = value as? [String: Any] {
+            }
+            // Handle Data values (Firebase often stores tokens as binary data)
+            else if let dataValue = value as? Data {
+                // Try to convert Data to String (UTF-8)
+                if let stringValue = String(data: dataValue, encoding: .utf8), !stringValue.isEmpty {
+                    if isTokenKey || looksLikeToken(stringValue) {
+                        let tokenType = isTokenKey ? determineTokenType(key: key, value: stringValue) : guessTokenType(stringValue)
+                        if let type = tokenType ?? (looksLikeToken(stringValue) ? guessTokenType(stringValue) : nil) {
+                            let token = CapturedToken(type: type, value: stringValue, source: bundleId)
+                            tokens.append(token)
+                        }
+                    }
+                }
+                // Try hex encoding for APNs device tokens (stored as raw bytes)
+                else if isTokenKey && dataValue.count == 32 {
+                    let hexToken = dataValue.map { String(format: "%02x", $0) }.joined()
+                    let token = CapturedToken(type: .apns, value: hexToken, source: bundleId)
+                    tokens.append(token)
+                }
+            }
+            // Handle nested dictionaries
+            else if let nestedDict = value as? [String: Any] {
                 searchDictionary(nestedDict, bundleId: bundleId, tokens: &tokens)
-            } else if let array = value as? [Any] {
+            }
+            // Handle arrays
+            else if let array = value as? [Any] {
                 for item in array {
                     if let nestedDict = item as? [String: Any] {
                         searchDictionary(nestedDict, bundleId: bundleId, tokens: &tokens)
+                    } else if let stringValue = item as? String, looksLikeToken(stringValue) {
+                        let tokenType = guessTokenType(stringValue)
+                        let token = CapturedToken(type: tokenType, value: stringValue, source: bundleId)
+                        tokens.append(token)
                     }
                 }
             }

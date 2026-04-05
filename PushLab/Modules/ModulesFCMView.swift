@@ -111,16 +111,6 @@ struct FCMView: View {
                     .cornerRadius(8)
                 }
                 
-                // Server key (legacy) or OAuth Token
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Server Key / OAuth Token (Optional)")
-                        .font(.system(size: 13, weight: .medium))
-                    
-                    TextField("Enter manually if not using service account", text: $viewModel.serverKey)
-                        .textFieldStyle(.roundedBorder)
-                        .font(.system(size: 11, design: .monospaced))
-                }
-                
                 Divider()
                 
                 // Notification content

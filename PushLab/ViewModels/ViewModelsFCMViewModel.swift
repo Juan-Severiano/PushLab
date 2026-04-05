@@ -11,7 +11,6 @@ import SwiftUI
 @Observable
 class FCMViewModel {
     var registrationToken: String = ""
-    var serverKey: String = ""
     
     // Service Account / Credentials file
     var projectId: String = ""
@@ -103,6 +102,11 @@ class FCMViewModel {
             return
         }
         
+        guard hasCredentialsLoaded else {
+            errorMessage = "Please load Firebase service account credentials"
+            return
+        }
+        
         var data: [String: String]? = nil
         if !dataPairs.isEmpty {
             data = [:]
@@ -139,7 +143,9 @@ class FCMViewModel {
         do {
             let result = try await PushService.shared.sendFCMNotification(
                 payload: payload,
-                serverKey: serverKey
+                projectId: projectId,
+                serviceAccountEmail: serviceAccountEmail,
+                privateKey: privateKey
             )
             
             responseJSON = result.rawJSON
@@ -159,10 +165,14 @@ class FCMViewModel {
     }
     
     func generateCURL() -> String {
-        var request = URLRequest(url: URL(string: "https://fcm.googleapis.com/v1/projects/YOUR_PROJECT_ID/messages:send")!)
+        let urlString = hasCredentialsLoaded
+            ? "https://fcm.googleapis.com/v1/projects/\(projectId)/messages:send"
+            : "https://fcm.googleapis.com/v1/projects/YOUR_PROJECT_ID/messages:send"
+        
+        var request = URLRequest(url: URL(string: urlString)!)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.setValue("Bearer \(serverKey)", forHTTPHeaderField: "Authorization")
+        request.setValue("Bearer YOUR_ACCESS_TOKEN", forHTTPHeaderField: "Authorization")
         
         var data: [String: String]? = nil
         if !dataPairs.isEmpty {
