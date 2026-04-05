@@ -155,7 +155,8 @@ final class SimulatorService {
                 
                 // Extract new bundle ID
                 let start = trimmed.index(after: trimmed.startIndex)
-                if let end = trimmed.firstIndex(of: "\"", after: start) {
+                let substring = trimmed[start...]
+                if let end = substring.firstIndex(of: "\"") {
                     currentBundleId = String(trimmed[start..<end])
                 }
                 currentName = nil
