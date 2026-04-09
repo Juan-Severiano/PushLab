@@ -92,38 +92,61 @@ final class TokenFileService {
     private func extractFirebaseTokens(containerPath: String, bundleId: String) -> [CapturedToken] {
         var tokens: [CapturedToken] = []
         let fm = FileManager.default
-        
-        // Firebase stores FCM token in a checkin file or installations plist
-        let firebasePaths = [
-            "\(containerPath)/Library/Application Support/Google/FirebaseMessaging/FIRMessagingStore.plist",
-            "\(containerPath)/Library/Preferences/\(bundleId).plist",
-            "\(containerPath)/Library/Application Support/FirebaseInstallations.plist"
-        ]
-        
-        for path in firebasePaths {
-            guard fm.fileExists(atPath: path),
-                  let data = fm.contents(atPath: path),
-                  let plist = try? PropertyListSerialization.propertyList(from: data, format: nil) as? [String: Any] else {
-                continue
+
+        // FIRMessagingStore.plist: Firebase Messaging stores the FCM registration token here.
+        // The structure uses composite keys like "{bundleId}|*|{firebaseAppId}" → token string.
+        // We do a deep scan of all string values rather than relying on key names.
+        let messagingStorePath = "\(containerPath)/Library/Application Support/Google/FirebaseMessaging/FIRMessagingStore.plist"
+        if fm.fileExists(atPath: messagingStorePath),
+           let data = fm.contents(atPath: messagingStorePath),
+           let plist = try? PropertyListSerialization.propertyList(from: data, format: nil) as? [String: Any] {
+            extractFCMTokensFromDict(plist, into: &tokens, source: bundleId)
+        }
+
+        // App's UserDefaults plist: Firebase Messaging caches the token here under
+        // keys like "com.google.firebase.messaging|registration-token-values|{senderId}"
+        let bundlePlistPath = "\(containerPath)/Library/Preferences/\(bundleId).plist"
+        if fm.fileExists(atPath: bundlePlistPath),
+           let data = fm.contents(atPath: bundlePlistPath),
+           let plist = try? PropertyListSerialization.propertyList(from: data, format: nil) as? [String: Any] {
+            extractFirebaseTokensFromUserDefaults(plist, into: &tokens, source: bundleId)
+        }
+
+        // NOTE: FirebaseInstallations.plist is intentionally NOT searched here —
+        // it contains Firebase Installation auth tokens (bearer tokens for Firebase API),
+        // not FCM registration tokens.
+
+        return tokens
+    }
+
+    /// Deep-scans a Firebase Messaging plist dict for FCM token strings.
+    /// Firebase uses composite keys (e.g. "com.example|*|1:123:ios:abc") so we check values, not keys.
+    private func extractFCMTokensFromDict(_ dict: [String: Any], into tokens: inout [CapturedToken], source: String) {
+        for (_, value) in dict {
+            if let stringValue = value as? String, looksLikeFCMToken(stringValue) {
+                tokens.append(CapturedToken(type: .fcm, value: stringValue, source: source))
+            } else if let nestedDict = value as? [String: Any] {
+                extractFCMTokensFromDict(nestedDict, into: &tokens, source: source)
             }
-            
-            // Look for FCM token keys used by Firebase SDK
-            let fcmKeys = ["fcm_token", "token", "FCMToken", "default_token", "messaging_token"]
-            
-            for key in fcmKeys {
-                if let tokenValue = findValueForKey(key, in: plist) {
-                    if let stringToken = tokenValue as? String, looksLikeToken(stringToken) {
-                        tokens.append(CapturedToken(type: .fcm, value: stringToken, source: bundleId))
-                    } else if let dataToken = tokenValue as? Data,
-                              let stringToken = String(data: dataToken, encoding: .utf8),
-                              looksLikeToken(stringToken) {
-                        tokens.append(CapturedToken(type: .fcm, value: stringToken, source: bundleId))
-                    }
+        }
+    }
+
+    /// Scans UserDefaults plist for Firebase Messaging token cache entries.
+    /// Firebase stores them under keys prefixed with "com.google.firebase.messaging".
+    private func extractFirebaseTokensFromUserDefaults(_ dict: [String: Any], into tokens: inout [CapturedToken], source: String) {
+        for (key, value) in dict {
+            guard key.lowercased().contains("com.google.firebase.messaging") ||
+                  key.lowercased().contains("firinstanceid") else { continue }
+
+            // Value may be the token string directly, or a nested dict with a "token" key
+            if let stringValue = value as? String, looksLikeFCMToken(stringValue) {
+                tokens.append(CapturedToken(type: .fcm, value: stringValue, source: source))
+            } else if let nestedDict = value as? [String: Any] {
+                if let tokenString = nestedDict["token"] as? String, looksLikeFCMToken(tokenString) {
+                    tokens.append(CapturedToken(type: .fcm, value: tokenString, source: source))
                 }
             }
         }
-        
-        return tokens
     }
     
     /// Recursively finds a value for a key in nested dictionaries
@@ -223,60 +246,43 @@ final class TokenFileService {
         return tokens
     }
     
-    /// Recursively searches a dictionary for token values
+    /// Recursively searches a dictionary for token values using known key names.
+    /// FCM tokens are NOT detected here — they come from extractFirebaseTokens which
+    /// knows the correct Firebase storage structure. This avoids false positives.
     private func searchDictionary(_ dict: [String: Any], bundleId: String, tokens: inout [CapturedToken]) {
         for (key, value) in dict {
-            // Check if key matches known token keys
             let isTokenKey = knownTokenKeys.contains { key.localizedCaseInsensitiveContains($0) }
-            
-            // Handle String values
+
             if let stringValue = value as? String {
                 if isTokenKey {
-                    // Determine token type based on key and value
                     let tokenType = determineTokenType(key: key, value: stringValue)
                     if let type = tokenType {
-                        let token = CapturedToken(type: type, value: stringValue, source: bundleId)
-                        tokens.append(token)
+                        tokens.append(CapturedToken(type: type, value: stringValue, source: bundleId))
                     }
                 } else if looksLikeToken(stringValue) {
-                    // Found a string that looks like a token
-                    let tokenType = guessTokenType(stringValue)
-                    let token = CapturedToken(type: tokenType, value: stringValue, source: bundleId)
-                    tokens.append(token)
-                }
-            }
-            // Handle Data values (Firebase often stores tokens as binary data)
-            else if let dataValue = value as? Data {
-                // Try to convert Data to String (UTF-8)
-                if let stringValue = String(data: dataValue, encoding: .utf8), !stringValue.isEmpty {
-                    if isTokenKey || looksLikeToken(stringValue) {
-                        let tokenType = isTokenKey ? determineTokenType(key: key, value: stringValue) : guessTokenType(stringValue)
-                        if let type = tokenType ?? (looksLikeToken(stringValue) ? guessTokenType(stringValue) : nil) {
-                            let token = CapturedToken(type: type, value: stringValue, source: bundleId)
-                            tokens.append(token)
-                        }
+                    // Only catch APNs (64 hex) and Expo tokens as catch-all
+                    // FCM catch-all removed to avoid false positives with Firebase internals
+                    let type = guessTokenType(stringValue)
+                    if type == .apns {
+                        tokens.append(CapturedToken(type: type, value: stringValue, source: bundleId))
                     }
                 }
-                // Try hex encoding for APNs device tokens (stored as raw bytes)
-                else if isTokenKey && dataValue.count == 32 {
+            } else if let dataValue = value as? Data {
+                if let stringValue = String(data: dataValue, encoding: .utf8), !stringValue.isEmpty, isTokenKey {
+                    if let type = determineTokenType(key: key, value: stringValue) {
+                        tokens.append(CapturedToken(type: type, value: stringValue, source: bundleId))
+                    }
+                } else if isTokenKey && dataValue.count == 32 {
+                    // APNs device token stored as raw 32 bytes
                     let hexToken = dataValue.map { String(format: "%02x", $0) }.joined()
-                    let token = CapturedToken(type: .apns, value: hexToken, source: bundleId)
-                    tokens.append(token)
+                    tokens.append(CapturedToken(type: .apns, value: hexToken, source: bundleId))
                 }
-            }
-            // Handle nested dictionaries
-            else if let nestedDict = value as? [String: Any] {
+            } else if let nestedDict = value as? [String: Any] {
                 searchDictionary(nestedDict, bundleId: bundleId, tokens: &tokens)
-            }
-            // Handle arrays
-            else if let array = value as? [Any] {
+            } else if let array = value as? [Any] {
                 for item in array {
                     if let nestedDict = item as? [String: Any] {
                         searchDictionary(nestedDict, bundleId: bundleId, tokens: &tokens)
-                    } else if let stringValue = item as? String, looksLikeToken(stringValue) {
-                        let tokenType = guessTokenType(stringValue)
-                        let token = CapturedToken(type: tokenType, value: stringValue, source: bundleId)
-                        tokens.append(token)
                     }
                 }
             }
@@ -305,34 +311,46 @@ final class TokenFileService {
         return guessTokenType(value)
     }
     
-    /// Checks if a string looks like a push token
+    /// Checks if a string looks like a push token (APNs or Expo)
     private func looksLikeToken(_ value: String) -> Bool {
-        // APNs: 64 hex characters
+        // APNs: exactly 64 hex characters
         if value.count == 64 && value.allSatisfy({ $0.isHexDigit }) {
             return true
         }
-        
-        // FCM: 100+ characters, alphanumeric with : and -
-        if value.count >= 100 && value.allSatisfy({ $0.isLetter || $0.isNumber || $0 == ":" || $0 == "-" || $0 == "_" }) {
-            return true
-        }
-        
+
         // Expo: starts with ExponentPushToken
         if value.hasPrefix("ExponentPushToken") {
             return true
         }
-        
+
         return false
     }
-    
+
+    /// Checks if a string looks like a real FCM registration token.
+    /// FCM tokens are 140–200+ chars, alphanumeric with limited special chars.
+    /// This is stricter than `looksLikeToken` to avoid false positives with
+    /// Firebase internal auth tokens / installation tokens.
+    private func looksLikeFCMToken(_ value: String) -> Bool {
+        // FCM tokens are at least 140 characters
+        guard value.count >= 140 else { return false }
+
+        // Only alphanumeric, colon, hyphen, underscore — no dots (rules out JWTs)
+        guard value.allSatisfy({ $0.isLetter || $0.isNumber || $0 == ":" || $0 == "-" || $0 == "_" }) else {
+            return false
+        }
+
+        // Must contain at least one colon or start with a known FCM pattern
+        // Old format: "APA91b..." or contains ":" separator
+        // New format: long random alphanumeric string
+        return true
+    }
+
     /// Guesses token type based on value format
     private func guessTokenType(_ value: String) -> CapturedToken.TokenType {
         // APNs tokens are exactly 64 hex characters
         if value.count == 64 && value.allSatisfy({ $0.isHexDigit }) {
             return .apns
         }
-        
-        // Everything else is likely FCM
         return .fcm
     }
 }

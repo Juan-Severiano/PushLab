@@ -6,6 +6,8 @@
 //
 
 import Foundation
+import CryptoKit
+import CryptoKit
 
 enum PushServiceError: LocalizedError {
     case invalidURL
@@ -117,14 +119,25 @@ class PushService {
     }
     
     private func generateAPNsJWT(teamId: String, keyId: String, p8Key: String) throws -> String {
-        // Simplified JWT generation - in production, use CryptoKit for ES256 signing
-        // This is a placeholder that shows the structure
-        _ = ["alg": "ES256", "kid": keyId]
-        _ = ["iss": teamId, "iat": Int(Date().timeIntervalSince1970)] as [String : Any]
-        
-        // Note: Real implementation requires ES256 signing with CryptoKit
-        // For now, returning a placeholder
-        return "PLACEHOLDER_JWT_TOKEN"
+        // Header
+        let header: [String: Any] = ["alg": "ES256", "kid": keyId]
+        let headerData = try JSONSerialization.data(withJSONObject: header)
+        let headerB64 = headerData.base64URLEncodedString()
+
+        // Claims
+        let claims: [String: Any] = ["iss": teamId, "iat": Int(Date().timeIntervalSince1970)]
+        let claimsData = try JSONSerialization.data(withJSONObject: claims)
+        let claimsB64 = claimsData.base64URLEncodedString()
+
+        let signingInput = "\(headerB64).\(claimsB64)"
+
+        // Sign with ES256 using CryptoKit P256 — p8Key is the PEM from Apple (.p8 file)
+        let privateKey = try P256.Signing.PrivateKey(pemRepresentation: p8Key)
+        let signature = try privateKey.signature(for: Data(signingInput.utf8))
+        // APNs requires raw r||s format (64 bytes), not DER
+        let signatureB64 = signature.rawRepresentation.base64URLEncodedString()
+
+        return "\(signingInput).\(signatureB64)"
     }
     
     // MARK: - FCM
