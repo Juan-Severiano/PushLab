@@ -10,6 +10,7 @@ import SwiftUI
 struct ExpoView: View {
     @State private var viewModel = ExpoViewModel()
     @State private var showCURLModal = false
+    @State private var showTokenExtractor = false
     
     var body: some View {
         ScrollView {
@@ -30,6 +31,14 @@ struct ExpoView: View {
                             .font(.system(size: 13, weight: .medium))
                         
                         Spacer()
+                        
+                        Button {
+                            showTokenExtractor = true
+                        } label: {
+                            Image(systemName: "antenna.radiowaves.left.and.right")
+                        }
+                        .buttonStyle(.plain)
+                        .help("Extract token from simulator")
                         
                         SaveTokenView(
                             token: $viewModel.tokens,
@@ -230,6 +239,15 @@ struct ExpoView: View {
                 curlCommand: viewModel.generateCURL(),
                 isPresented: $showCURLModal
             )
+        }
+        .sheet(isPresented: $showTokenExtractor) {
+            TokenExtractorSheet { token in
+                if viewModel.tokens.isEmpty {
+                    viewModel.tokens = token
+                } else {
+                    viewModel.tokens += "\n\(token)"
+                }
+            }
         }
     }
 }

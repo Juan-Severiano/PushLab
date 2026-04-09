@@ -11,6 +11,7 @@ internal import UniformTypeIdentifiers
 struct LiveActivityView: View {
     @State private var viewModel = LiveActivityViewModel()
     @State private var showCURLModal = false
+    @State private var showTokenExtractor = false
     
     var body: some View {
         ScrollView {
@@ -27,6 +28,14 @@ struct LiveActivityView: View {
                             .font(.system(size: 13, weight: .medium))
                         
                         Spacer()
+                        
+                        Button {
+                            showTokenExtractor = true
+                        } label: {
+                            Image(systemName: "antenna.radiowaves.left.and.right")
+                        }
+                        .buttonStyle(.plain)
+                        .help("Extract token from simulator")
                         
                         SaveTokenView(
                             token: $viewModel.activityToken,
@@ -225,6 +234,11 @@ struct LiveActivityView: View {
                 curlCommand: viewModel.generateCURL(),
                 isPresented: $showCURLModal
             )
+        }
+        .sheet(isPresented: $showTokenExtractor) {
+            TokenExtractorSheet { token in
+                viewModel.activityToken = token
+            }
         }
     }
 }

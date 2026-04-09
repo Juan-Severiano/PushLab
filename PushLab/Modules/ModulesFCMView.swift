@@ -6,10 +6,12 @@
 //
 
 import SwiftUI
+internal import UniformTypeIdentifiers
 
 struct FCMView: View {
     @State private var viewModel = FCMViewModel()
     @State private var showCURLModal = false
+    @State private var showTokenExtractor = false
     
     var body: some View {
         ScrollView {
@@ -26,6 +28,14 @@ struct FCMView: View {
                             .font(.system(size: 13, weight: .medium))
                         
                         Spacer()
+                        
+                        Button {
+                            showTokenExtractor = true
+                        } label: {
+                            Image(systemName: "antenna.radiowaves.left.and.right")
+                        }
+                        .buttonStyle(.plain)
+                        .help("Extract token from simulator")
                         
                         SaveTokenView(
                             token: $viewModel.registrationToken,
@@ -46,14 +56,59 @@ struct FCMView: View {
                         )
                 }
                 
-                // Server key
+                // Firebase Service Account
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("Server Key / OAuth Token")
+                    Text("Firebase Credentials")
                         .font(.system(size: 13, weight: .medium))
                     
-                    TextField("", text: $viewModel.serverKey)
-                        .textFieldStyle(.roundedBorder)
-                        .font(.system(size: 11, design: .monospaced))
+                    HStack {
+                        if viewModel.hasCredentialsLoaded {
+                            VStack(alignment: .leading, spacing: 4) {
+                                HStack(spacing: 6) {
+                                    Image(systemName: "checkmark.circle.fill")
+                                        .foregroundStyle(.green)
+                                        .font(.system(size: 12))
+                                    Text(viewModel.credentialsFileName)
+                                        .font(.system(size: 11, design: .monospaced))
+                                }
+                                
+                                Text("Project: \(viewModel.projectId)")
+                                    .font(.system(size: 10))
+                                    .foregroundStyle(.secondary)
+                            }
+                            
+                            Spacer()
+                            
+                            Button(action: viewModel.clearCredentials) {
+                                Image(systemName: "xmark.circle")
+                                    .foregroundStyle(.secondary)
+                            }
+                            .buttonStyle(.plain)
+                            .help("Clear credentials")
+                        } else {
+                            Text("No credentials loaded")
+                                .font(.system(size: 11))
+                                .foregroundStyle(.secondary)
+                            
+                            Spacer()
+                        }
+                        
+                        Button("Load Service Account") {
+                            let panel = NSOpenPanel()
+                            panel.allowedContentTypes = [UTType.json]
+                            panel.allowsMultipleSelection = false
+                            panel.canChooseDirectories = false
+                            panel.message = "Select Firebase service account JSON file"
+                            
+                            if panel.runModal() == .OK, let url = panel.url {
+                                viewModel.loadServiceAccount(from: url)
+                            }
+                        }
+                        .buttonStyle(.bordered)
+                    }
+                    .padding(10)
+                    .background(Color(nsColor: .controlBackgroundColor))
+                    .cornerRadius(8)
                 }
                 
                 Divider()
@@ -220,6 +275,11 @@ struct FCMView: View {
                 curlCommand: viewModel.generateCURL(),
                 isPresented: $showCURLModal
             )
+        }
+        .sheet(isPresented: $showTokenExtractor) {
+            TokenExtractorSheet { token in
+                viewModel.registrationToken = token
+            }
         }
     }
 }

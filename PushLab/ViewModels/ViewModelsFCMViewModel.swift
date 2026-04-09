@@ -11,7 +11,12 @@ import SwiftUI
 @Observable
 class FCMViewModel {
     var registrationToken: String = ""
-    var serverKey: String = ""
+    
+    // Service Account / Credentials file
+    var projectId: String = ""
+    var serviceAccountEmail: String = ""
+    var privateKey: String = ""
+    var credentialsFileName: String = ""
     
     var title: String = ""
     var body: String = ""
@@ -35,6 +40,49 @@ class FCMViewModel {
         var value: String
     }
     
+    /// Loads Firebase credentials from a service account JSON file
+    func loadServiceAccount(from url: URL) {
+        do {
+            let data = try Data(contentsOf: url)
+            
+            guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+                errorMessage = "Invalid JSON format"
+                return
+            }
+            
+            // Firebase Admin SDK service account format
+            if let projId = json["project_id"] as? String {
+                projectId = projId
+            }
+            
+            if let clientEmail = json["client_email"] as? String {
+                serviceAccountEmail = clientEmail
+            }
+            
+            if let privKey = json["private_key"] as? String {
+                privateKey = privKey
+            }
+            
+            credentialsFileName = url.lastPathComponent
+            errorMessage = nil
+            
+        } catch {
+            errorMessage = "Failed to load file: \(error.localizedDescription)"
+        }
+    }
+    
+    /// Clears loaded credentials
+    func clearCredentials() {
+        projectId = ""
+        serviceAccountEmail = ""
+        privateKey = ""
+        credentialsFileName = ""
+    }
+    
+    var hasCredentialsLoaded: Bool {
+        !projectId.isEmpty && !privateKey.isEmpty
+    }
+    
     func addDataPair() {
         dataPairs.append(KeyValuePair(key: "", value: ""))
     }
@@ -51,6 +99,11 @@ class FCMViewModel {
         
         guard !registrationToken.isEmpty else {
             errorMessage = "Please enter FCM registration token"
+            return
+        }
+        
+        guard hasCredentialsLoaded else {
+            errorMessage = "Please load Firebase service account credentials"
             return
         }
         
@@ -90,7 +143,9 @@ class FCMViewModel {
         do {
             let result = try await PushService.shared.sendFCMNotification(
                 payload: payload,
-                serverKey: serverKey
+                projectId: projectId,
+                serviceAccountEmail: serviceAccountEmail,
+                privateKey: privateKey
             )
             
             responseJSON = result.rawJSON
@@ -110,10 +165,14 @@ class FCMViewModel {
     }
     
     func generateCURL() -> String {
-        var request = URLRequest(url: URL(string: "https://fcm.googleapis.com/v1/projects/YOUR_PROJECT_ID/messages:send")!)
+        let urlString = hasCredentialsLoaded
+            ? "https://fcm.googleapis.com/v1/projects/\(projectId)/messages:send"
+            : "https://fcm.googleapis.com/v1/projects/YOUR_PROJECT_ID/messages:send"
+        
+        var request = URLRequest(url: URL(string: urlString)!)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.setValue("Bearer \(serverKey)", forHTTPHeaderField: "Authorization")
+        request.setValue("Bearer YOUR_ACCESS_TOKEN", forHTTPHeaderField: "Authorization")
         
         var data: [String: String]? = nil
         if !dataPairs.isEmpty {
