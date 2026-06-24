@@ -14,26 +14,44 @@ struct ResponsePanel: View {
     
     @State private var isExpanded = true
     
+    private var statusColor: Color {
+        status.contains("✅") ? .green : (status.contains("⚠️") ? .orange : .red)
+    }
+    
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Label(status, systemImage: status.contains("✅") ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
-                    .font(.system(size: 13, weight: .medium))
-                    .foregroundStyle(status.contains("✅") ? .green : .orange)
+            HStack(spacing: 10) {
+                Label("Response", systemImage: "bubble.left.and.text.bubble.right.fill")
+                    .font(.system(size: 13, weight: .semibold))
                 
-                Spacer()
+                Text(status)
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(statusColor)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(
+                        statusColor.opacity(0.14),
+                        in: Capsule(style: .continuous)
+                    )
                 
                 Button(action: onCopy) {
-                    Label("Copy Response", systemImage: "doc.on.doc")
+                    Label("Copy", systemImage: "doc.on.doc")
                         .font(.system(size: 11))
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.borderless)
+                .controlSize(.small)
                 
                 Button(action: { isExpanded.toggle() }) {
-                    Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
-                        .font(.system(size: 10, weight: .semibold))
+                    Label(
+                        isExpanded ? "Collapse" : "Expand",
+                        systemImage: isExpanded ? "chevron.down" : "chevron.right"
+                    )
+                    .font(.system(size: 11))
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.borderless)
+                .controlSize(.small)
+                
+                Spacer(minLength: 0)
             }
             
             if isExpanded {
@@ -43,15 +61,13 @@ struct ResponsePanel: View {
                         .foregroundStyle(.secondary)
                         .textSelection(.enabled)
                         .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(8)
-                        .background(Color(nsColor: .textBackgroundColor))
-                        .cornerRadius(6)
+                        .padding(10)
+                        .panelSurface(fill: Color(nsColor: .textBackgroundColor))
                 }
-                .frame(maxHeight: 200)
+                .frame(minHeight: 120, maxHeight: 220)
             }
         }
-        .padding(12)
-        .background(Color(nsColor: .controlBackgroundColor))
-        .cornerRadius(8)
+        .padding(14)
+        .panelSurface(fill: Color(nsColor: .controlBackgroundColor))
     }
 }

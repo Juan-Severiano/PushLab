@@ -12,10 +12,16 @@ struct CURLModal: View {
     @Binding var isPresented: Bool
     
     var body: some View {
-        VStack(spacing: 16) {
+        VStack(alignment: .leading, spacing: 18) {
             HStack {
-                Text("cURL Command")
-                    .font(.system(size: 16, weight: .semibold))
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("cURL Command")
+                        .font(.system(size: 18, weight: .semibold))
+                    
+                    Text("Use this request as a quick handoff to Terminal or documentation.")
+                        .font(.system(size: 12))
+                        .foregroundStyle(.secondary)
+                }
                 
                 Spacer()
                 
@@ -24,7 +30,7 @@ struct CURLModal: View {
                         .font(.system(size: 18))
                         .foregroundStyle(.secondary)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.borderless)
             }
             
             ScrollView {
@@ -33,22 +39,26 @@ struct CURLModal: View {
                     .textSelection(.enabled)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(12)
-                    .background(Color(nsColor: .textBackgroundColor))
-                    .cornerRadius(8)
+                    .panelSurface(fill: Color(nsColor: .textBackgroundColor))
             }
-            .frame(maxHeight: 400)
+            .frame(minHeight: 240, maxHeight: 420)
             
             HStack {
-                Spacer()
+                Button("Close") {
+                    isPresented = false
+                }
+                .keyboardShortcut(.escape)
                 
                 Button("Copy to Clipboard") {
                     NSPasteboard.general.clearContents()
                     NSPasteboard.general.setString(curlCommand, forType: .string)
                 }
                 .keyboardShortcut(.return)
+                
+                Spacer()
             }
         }
-        .padding()
-        .frame(width: 600)
+        .padding(20)
+        .frame(minWidth: 640, minHeight: 360)
     }
 }
