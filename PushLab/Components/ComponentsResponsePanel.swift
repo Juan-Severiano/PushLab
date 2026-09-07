@@ -15,7 +15,10 @@ struct ResponsePanel: View {
     @State private var isExpanded = true
     
     private var statusColor: Color {
-        status.contains("✅") ? .green : (status.contains("⚠️") ? .orange : .red)
+        if status.contains("✅") { return .green }
+        if status.contains("⚠️") { return .orange }
+        if status.contains("❌") { return .red }
+        return .secondary
     }
     
     var body: some View {
