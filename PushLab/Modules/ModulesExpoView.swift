@@ -13,31 +13,28 @@ struct ExpoView: View {
     @State private var showTokenExtractor = false
     
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
-                // Saved tokens
-                SavedTokensList(tokenType: .expo) { token in
-                    if viewModel.tokens.isEmpty {
-                        viewModel.tokens = token
-                    } else {
-                        viewModel.tokens += "\n\(token)"
-                    }
+        ModuleScrollContainer {
+            SavedTokensList(tokenType: .expo) { token in
+                if viewModel.tokens.isEmpty {
+                    viewModel.tokens = token
+                } else {
+                    viewModel.tokens += "\n\(token)"
                 }
-                
-                // Token input
-                VStack(alignment: .leading, spacing: 8) {
-                    HStack {
-                        Text("Push Tokens")
-                            .font(.system(size: 13, weight: .medium))
-                        
-                        Spacer()
-                        
+            }
+            
+            FormSectionCard(
+                title: "Push Tokens",
+                description: "Add one ExponentPushToken per line or pull one from the simulator.",
+                systemImage: "paperplane",
+                actions: {
+                    HStack(spacing: 8) {
                         Button {
                             showTokenExtractor = true
                         } label: {
                             Image(systemName: "antenna.radiowaves.left.and.right")
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(.borderless)
+                        .controlSize(.small)
                         .help("Extract token from simulator")
                         
                         SaveTokenView(
@@ -45,194 +42,117 @@ struct ExpoView: View {
                             tokenType: .expo
                         )
                     }
-                    
-                    TextEditor(text: $viewModel.tokens)
-                        .font(.system(size: 11, design: .monospaced))
-                        .frame(height: 80)
-                        .scrollContentBackground(.hidden)
-                        .padding(8)
-                        .background(Color(nsColor: .textBackgroundColor))
-                        .cornerRadius(6)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 6)
-                                .stroke(Color.gray.opacity(0.2), lineWidth: 1)
-                        )
-                    
-                    Text("One ExponentPushToken per line")
-                        .font(.system(size: 10))
-                        .foregroundStyle(.secondary)
                 }
+            ) {
+                TextEditor(text: $viewModel.tokens)
+                    .tokenEditorSurface(minHeight: 84)
                 
-                // Access token (optional)
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Access Token (Optional)")
-                        .font(.system(size: 13, weight: .medium))
-                    
-                    TextField("", text: $viewModel.accessToken)
-                        .textFieldStyle(.roundedBorder)
-                        .font(.system(size: 11, design: .monospaced))
-                }
+                FieldHint(text: "One ExponentPushToken per line.")
+            }
+            
+            FormSectionCard(
+                title: "Access Token",
+                description: "Optional. Only needed when your Expo project uses an access token.",
+                systemImage: "key.horizontal"
+            ) {
+                TextField("Bearer access token", text: $viewModel.accessToken)
+                    .textFieldStyle(.roundedBorder)
+                    .font(.system(size: 11, design: .monospaced))
+            }
+            
+            FormSectionCard(
+                title: "Notification Content",
+                description: "Compose the visible content and delivery options for this push.",
+                systemImage: "text.bubble"
+            ) {
+                TextField("Title", text: $viewModel.title)
+                    .textFieldStyle(.roundedBorder)
                 
-                Divider()
+                TextField("Body", text: $viewModel.body)
+                    .textFieldStyle(.roundedBorder)
                 
-                // Notification content
-                VStack(alignment: .leading, spacing: 12) {
-                    Text("Notification Content")
-                        .font(.system(size: 13, weight: .medium))
-                    
-                    TextField("Title", text: $viewModel.title)
-                        .textFieldStyle(.roundedBorder)
-                    
-                    TextField("Body", text: $viewModel.body)
-                        .textFieldStyle(.roundedBorder)
-                    
-                    HStack(spacing: 12) {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("Priority")
-                                .font(.system(size: 11))
-                                .foregroundStyle(.secondary)
-                            
-                            Picker("", selection: $viewModel.priority) {
-                                Text("Default").tag("default")
-                                Text("Normal").tag("normal")
-                                Text("High").tag("high")
-                            }
-                            .pickerStyle(.segmented)
-                        }
-                        
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("Sound")
-                                .font(.system(size: 11))
-                                .foregroundStyle(.secondary)
-                            
-                            TextField("default", text: $viewModel.sound)
-                                .textFieldStyle(.roundedBorder)
-                        }
-                        
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("Badge")
-                                .font(.system(size: 11))
-                                .foregroundStyle(.secondary)
-                            
-                            TextField("0", text: $viewModel.badge)
-                                .textFieldStyle(.roundedBorder)
-                        }
+                AdaptiveFields {
+                    HStack(alignment: .top, spacing: 12) {
+                        priorityField
+                        soundField
+                        badgeField
                     }
-                }
-                
-                Divider()
-                
-                // Custom data
-                VStack(alignment: .leading, spacing: 12) {
-                    HStack {
-                        Text("Custom Data")
-                            .font(.system(size: 13, weight: .medium))
-                        
-                        Spacer()
-                        
-                        Button(action: viewModel.addCustomDataPair) {
-                            Label("Add", systemImage: "plus.circle.fill")
-                                .font(.system(size: 11))
-                        }
-                        .buttonStyle(.plain)
+                } compact: {
+                    VStack(alignment: .leading, spacing: 12) {
+                        priorityField
+                        soundField
+                        badgeField
                     }
-                    
-                    if !viewModel.customDataPairs.isEmpty {
-                        VStack(spacing: 8) {
-                            ForEach(viewModel.customDataPairs) { pair in
-                                HStack(spacing: 8) {
-                                    TextField("Key", text: Binding(
-                                        get: { pair.key },
-                                        set: { newValue in
-                                            if let index = viewModel.customDataPairs.firstIndex(where: { $0.id == pair.id }) {
-                                                viewModel.customDataPairs[index].key = newValue
-                                            }
-                                        }
-                                    ))
-                                    .textFieldStyle(.roundedBorder)
-                                    .font(.system(size: 11, design: .monospaced))
-                                    
-                                    TextField("Value", text: Binding(
-                                        get: { pair.value },
-                                        set: { newValue in
-                                            if let index = viewModel.customDataPairs.firstIndex(where: { $0.id == pair.id }) {
-                                                viewModel.customDataPairs[index].value = newValue
-                                            }
-                                        }
-                                    ))
-                                    .textFieldStyle(.roundedBorder)
-                                    .font(.system(size: 11, design: .monospaced))
-                                    
-                                    Button(action: {
-                                        if let index = viewModel.customDataPairs.firstIndex(where: { $0.id == pair.id }) {
-                                            viewModel.customDataPairs.remove(at: index)
-                                        }
-                                    }) {
-                                        Image(systemName: "trash")
-                                            .font(.system(size: 11))
-                                            .foregroundStyle(.red)
-                                    }
-                                    .buttonStyle(.plain)
-                                }
-                            }
-                        }
-                    }
-                }
-                
-                // Error message
-                if let error = viewModel.errorMessage {
-                    Text(error)
-                        .font(.system(size: 11))
-                        .foregroundStyle(.red)
-                        .padding(8)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .background(Color.red.opacity(0.1))
-                        .cornerRadius(6)
-                }
-                
-                // Response panel
-                if viewModel.showResponse {
-                    ResponsePanel(
-                        status: viewModel.responseStatus,
-                        json: viewModel.responseJSON,
-                        onCopy: {
-                            NSPasteboard.general.clearContents()
-                            NSPasteboard.general.setString(viewModel.responseJSON, forType: .string)
-                        }
-                    )
-                }
-                
-                Divider()
-                
-                // Actions
-                HStack {
-                    Button(action: { showCURLModal = true }) {
-                        Label("Generate cURL", systemImage: "terminal")
-                    }
-                    .buttonStyle(.bordered)
-                    
-                    Spacer()
-                    
-                    Button(action: {
-                        Task {
-                            await viewModel.send()
-                        }
-                    }) {
-                        if viewModel.isLoading {
-                            ProgressView()
-                                .scaleEffect(0.7)
-                                .frame(width: 100)
-                        } else {
-                            Text("Send Push")
-                                .frame(width: 100)
-                        }
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .keyboardShortcut(.return, modifiers: .command)
-                    .disabled(viewModel.isLoading || viewModel.tokens.isEmpty)
                 }
             }
-            .padding()
+            
+            FormSectionCard(
+                title: "Custom Data",
+                description: "Attach extra key-value data to the payload.",
+                systemImage: "curlybraces",
+                actions: {
+                    Button(action: viewModel.addCustomDataPair) {
+                        Label("Add Field", systemImage: "plus.circle.fill")
+                            .font(.system(size: 11))
+                    }
+                    .buttonStyle(.borderless)
+                    .controlSize(.small)
+                }
+            ) {
+                if viewModel.customDataPairs.isEmpty {
+                    FieldHint(text: "No custom fields added yet.")
+                } else {
+                    VStack(spacing: 8) {
+                        ForEach(viewModel.customDataPairs) { pair in
+                            customDataRow(for: pair)
+                        }
+                    }
+                }
+            }
+            
+            if let error = viewModel.errorMessage {
+                InlineMessageCard(text: error, tone: .error)
+            }
+            
+            if viewModel.showResponse {
+                ResponsePanel(
+                    status: viewModel.responseStatus,
+                    json: viewModel.responseJSON,
+                    onCopy: {
+                        NSPasteboard.general.clearContents()
+                        NSPasteboard.general.setString(viewModel.responseJSON, forType: .string)
+                    }
+                )
+            }
+            
+            HStack(spacing: 12) {
+                Button(action: { showCURLModal = true }) {
+                    Label("Generate cURL", systemImage: "terminal")
+                }
+                .buttonStyle(.bordered)
+                
+                Spacer()
+                
+                Button(action: {
+                    Task {
+                        await viewModel.send()
+                    }
+                }) {
+                    if viewModel.isLoading {
+                        ProgressView()
+                            .scaleEffect(0.7)
+                            .frame(width: 110)
+                    } else {
+                        Text("Send Push")
+                            .frame(width: 110)
+                    }
+                }
+                .buttonStyle(.borderedProminent)
+                .keyboardShortcut(.return, modifiers: .command)
+                .disabled(viewModel.isLoading || viewModel.tokens.isEmpty)
+            }
+            .padding(14)
+            .panelSurface(fill: Color(nsColor: .controlBackgroundColor))
         }
         .sheet(isPresented: $showCURLModal) {
             CURLModal(
@@ -249,6 +169,112 @@ struct ExpoView: View {
                 }
             }
         }
+    }
+    
+    private var priorityField: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text("Priority")
+                .font(.system(size: 11))
+                .foregroundStyle(.secondary)
+            
+            Picker("", selection: $viewModel.priority) {
+                Text("Default").tag("default")
+                Text("Normal").tag("normal")
+                Text("High").tag("high")
+            }
+            .pickerStyle(.segmented)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+    
+    private var soundField: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text("Sound")
+                .font(.system(size: 11))
+                .foregroundStyle(.secondary)
+            
+            TextField("default", text: $viewModel.sound)
+                .textFieldStyle(.roundedBorder)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+    
+    private var badgeField: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text("Badge")
+                .font(.system(size: 11))
+                .foregroundStyle(.secondary)
+            
+            TextField("0", text: $viewModel.badge)
+                .textFieldStyle(.roundedBorder)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+    
+    private func customDataRow(for pair: ExpoViewModel.KeyValuePair) -> some View {
+        let keyBinding = Binding(
+            get: { pair.key },
+            set: { newValue in
+                if let index = viewModel.customDataPairs.firstIndex(where: { $0.id == pair.id }) {
+                    viewModel.customDataPairs[index].key = newValue
+                }
+            }
+        )
+        let valueBinding = Binding(
+            get: { pair.value },
+            set: { newValue in
+                if let index = viewModel.customDataPairs.firstIndex(where: { $0.id == pair.id }) {
+                    viewModel.customDataPairs[index].value = newValue
+                }
+            }
+        )
+        
+        return AdaptiveFields {
+            HStack(spacing: 8) {
+                TextField("Key", text: keyBinding)
+                    .textFieldStyle(.roundedBorder)
+                    .font(.system(size: 11, design: .monospaced))
+                
+                TextField("Value", text: valueBinding)
+                    .textFieldStyle(.roundedBorder)
+                    .font(.system(size: 11, design: .monospaced))
+                
+                removeCustomDataButton(for: pair.id)
+            }
+            .padding(10)
+            .panelSurface(fill: Color(nsColor: .textBackgroundColor))
+        } compact: {
+            VStack(alignment: .leading, spacing: 8) {
+                TextField("Key", text: keyBinding)
+                    .textFieldStyle(.roundedBorder)
+                    .font(.system(size: 11, design: .monospaced))
+                
+                HStack(spacing: 8) {
+                    TextField("Value", text: valueBinding)
+                        .textFieldStyle(.roundedBorder)
+                        .font(.system(size: 11, design: .monospaced))
+                    
+                    removeCustomDataButton(for: pair.id)
+                }
+            }
+            .padding(10)
+            .panelSurface(fill: Color(nsColor: .textBackgroundColor))
+        }
+    }
+    
+    private func removeCustomDataButton(for id: UUID) -> some View {
+        Button(action: {
+            if let index = viewModel.customDataPairs.firstIndex(where: { $0.id == id }) {
+                viewModel.customDataPairs.remove(at: index)
+            }
+        }) {
+            Image(systemName: "trash")
+                .font(.system(size: 11))
+                .foregroundStyle(.red)
+        }
+        .buttonStyle(.borderless)
+        .controlSize(.small)
+        .help("Remove field")
     }
 }
 

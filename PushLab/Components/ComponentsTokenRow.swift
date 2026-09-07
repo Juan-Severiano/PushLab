@@ -14,7 +14,7 @@ struct TokenRow: View {
     let onSelect: () -> Void
     
     var body: some View {
-        HStack {
+        HStack(spacing: 12) {
             VStack(alignment: .leading, spacing: 4) {
                 Text(token.label)
                     .font(.system(size: 13, weight: .medium))
@@ -24,38 +24,36 @@ struct TokenRow: View {
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
             
-            Spacer()
-            
-            Button(action: {
-                NSPasteboard.general.clearContents()
-                NSPasteboard.general.setString(token.token, forType: .string)
-            }) {
-                Image(systemName: "doc.on.doc")
-                    .font(.system(size: 12))
+            ControlGroup {
+                Button(action: {
+                    NSPasteboard.general.clearContents()
+                    NSPasteboard.general.setString(token.token, forType: .string)
+                }) {
+                    Image(systemName: "doc.on.doc")
+                        .font(.system(size: 12))
+                }
+                .help("Copy token")
+                
+                Button(action: onSelect) {
+                    Image(systemName: "arrow.up.forward.square")
+                        .font(.system(size: 12))
+                }
+                .help("Use this token")
+                
+                Button(action: onDelete) {
+                    Image(systemName: "trash")
+                        .font(.system(size: 12))
+                        .foregroundStyle(.red)
+                }
+                .help("Delete")
             }
-            .buttonStyle(.plain)
-            .help("Copy token")
-            
-            Button(action: onSelect) {
-                Image(systemName: "arrow.up.forward.square")
-                    .font(.system(size: 12))
-            }
-            .buttonStyle(.plain)
-            .help("Use this token")
-            
-            Button(action: onDelete) {
-                Image(systemName: "trash")
-                    .font(.system(size: 12))
-                    .foregroundStyle(.red)
-            }
-            .buttonStyle(.plain)
-            .help("Delete")
+            .controlSize(.small)
+            .buttonStyle(.borderless)
         }
-        .padding(.horizontal, 8)
-        .padding(.vertical, 6)
-        .background(Color(nsColor: .controlBackgroundColor))
-        .cornerRadius(6)
+        .padding(10)
+        .panelSurface(fill: Color(nsColor: .textBackgroundColor))
     }
 }
 
@@ -69,10 +67,11 @@ struct SaveTokenView: View {
     
     var body: some View {
         Button(action: { showSheet = true }) {
-            Label("Save Token", systemImage: "bookmark")
+            Label("Save", systemImage: "bookmark")
                 .font(.system(size: 12))
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.borderless)
+        .controlSize(.small)
         .disabled(token.isEmpty)
         .sheet(isPresented: $showSheet) {
             VStack(spacing: 16) {
@@ -122,12 +121,11 @@ struct SavedTokensList: View {
     
     var body: some View {
         if !filteredTokens.isEmpty {
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Saved Tokens")
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(.secondary)
-                    .textCase(.uppercase)
-                
+            FormSectionCard(
+                title: "Saved Tokens",
+                description: "Reuse a previous token instead of pasting it again.",
+                systemImage: "bookmark"
+            ) {
                 VStack(spacing: 4) {
                     ForEach(filteredTokens) { token in
                         TokenRow(
