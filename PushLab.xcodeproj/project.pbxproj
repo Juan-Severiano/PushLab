@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		D0A8F3C12F7C3E3B00F37D82 /* PushLabsIcon.icon in Resources */ = {isa = PBXBuildFile; fileRef = D0A8F3C02F7C3E3B00F37D82 /* PushLabsIcon.icon */; };
 		617920712F7C3D8B00F37D82 /* README.md in Resources */ = {isa = PBXBuildFile; fileRef = 617920702F7C3D8B00F37D82 /* README.md */; };
 		6179207F2F7C3E2700F37D82 /* LICENSE in Resources */ = {isa = PBXBuildFile; fileRef = 6179207E2F7C3E2700F37D82 /* LICENSE */; };
 		617920812F7C3E3B00F37D82 /* .gitignore in Resources */ = {isa = PBXBuildFile; fileRef = 617920802F7C3E3B00F37D82 /* .gitignore */; };
@@ -14,6 +15,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		D0A8F3C02F7C3E3B00F37D82 /* PushLabsIcon.icon */ = {isa = PBXFileReference; lastKnownFileType = folder.icon; path = PushLabsIcon.icon; sourceTree = "<group>"; };
 		617920422F7C3AB600F37D82 /* PushLab.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PushLab.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		617920702F7C3D8B00F37D82 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		6179207E2F7C3E2700F37D82 /* LICENSE */ = {isa = PBXFileReference; lastKnownFileType = text; path = LICENSE; sourceTree = "<group>"; };
@@ -48,6 +50,7 @@
 		617920392F7C3AB600F37D82 = {
 			isa = PBXGroup;
 			children = (
+				D0A8F3C02F7C3E3B00F37D82 /* PushLabsIcon.icon */,
 				617920842F7C426400F37D82 /* Docs */,
 				617920802F7C3E3B00F37D82 /* .gitignore */,
 				617920822F7C3E5D00F37D82 /* CONTRIBUTING.md */,
@@ -131,6 +134,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				D0A8F3C12F7C3E3B00F37D82 /* PushLabsIcon.icon in Resources */,
 				6179207F2F7C3E2700F37D82 /* LICENSE in Resources */,
 				617920812F7C3E3B00F37D82 /* .gitignore in Resources */,
 				617920712F7C3D8B00F37D82 /* README.md in Resources */,
@@ -274,7 +278,7 @@
 		617920502F7C3AB700F37D82 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_APPICON_NAME = PushLabsIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = PushLab/PushLab.entitlements;
 				CODE_SIGN_STYLE = Automatic;
@@ -309,7 +313,7 @@
 		617920512F7C3AB700F37D82 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_APPICON_NAME = PushLabsIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = PushLab/PushLab.entitlements;
 				CODE_SIGN_STYLE = Automatic;
